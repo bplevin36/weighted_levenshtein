@@ -6,25 +6,27 @@ pub fn distance<T: PartialEq, U: AsRef<[T]>> (a: U, b: U) -> usize
    let mut a = a.as_ref();
    let mut b = b.as_ref();
 
+   if a == b { return 0; }
+
    if a.len() > b.len() { swap (&mut a, &mut b); }
 
    if a.len() == 0 { return b.len(); }
 
-   let mut d0: Vec<_> = (0 .. a.len()+1).collect();
-   let mut d1 = vec![0; a.len()+1];
+   let mut cache: Vec<_> = (0 .. a.len()).collect();
 
-   for i in 0 .. b.len() {
-      d1[0] = i+1;
-      for j in 0 .. a.len() {
-         let sub = d0[j] + if b[i] == a[j] { 0 } else { 1 };
-         let del = d0[j+1] + 1;
-         let ins = d1[j] + 1;
-         d1[j+1] = min (min (sub, del), ins);
+   let mut result = 0;
+   for (i, bi) in b.iter().enumerate() {
+      result = i;
+      let mut up = i;
+      for (aj, c) in a.iter().zip (cache.iter_mut()) {
+         let diag = if bi == aj { up } else { up+1 };
+         up = *c;
+         result = min (min (result + 1, up + 1), diag);
+         *c = result;
       }
-      swap (&mut d0, &mut d1);
    }
 
-   return *d0.last().unwrap();
+   return result;
 }
 
 #[cfg (test)]
