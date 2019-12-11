@@ -66,4 +66,28 @@ mod tests {
       assert_eq!(distance (vec![0, 1, 2], vec![1, 2]), 1);
       assert_eq!(distance (vec![0, 1, 2], vec![3, 1, 2]), 1);
    }
+
+   #[test]
+   fn should_work_on_sentences() {
+      assert_eq!(
+         distance (
+            "The quick brown fox jumps over the lazy dog".split (' ').collect::<Vec<_>>(),
+            "The quick brown fox jumps over the lazy dog".split (' ').collect::<Vec<_>>()),
+         0);
+      assert_eq!(
+         distance (
+            "The quick brown fox jumps over the lazy dog".split (' ').collect::<Vec<_>>(),
+            "The quick brown fox jumps over the very lazy dog".split (' ').collect::<Vec<_>>()),
+         1);
+      assert_eq!(
+         distance (
+            "The quick brown fox jumps over the lazy dog".split (' ').collect::<Vec<_>>(),
+            "The brown fox jumps over the lazy dog".split (' ').collect::<Vec<_>>()),
+         1);
+      assert_eq!(
+         distance (
+            "The quick brown fox jumps over the lazy dog".split (' ').collect::<Vec<_>>(),
+            "The quick brown cat jumps over the lazy dog".split (' ').collect::<Vec<_>>()),
+         1);
+   }
 }
