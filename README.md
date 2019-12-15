@@ -1,5 +1,7 @@
 # README #
 
+[![Docs](https://docs.rs/generic_levenshtein/badge.svg)](https://docs.rs/generic_levenshtein/)
+
 A   generic    and   fast    implementation   of    the   [Levenshtein
 distance](http://en.wikipedia.org/wiki/Levenshtein_distance).
 

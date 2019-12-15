@@ -1,6 +1,43 @@
+//! A   generic   and   fast  implementation   of   the   [Levenshtein
+//! distance](http://en.wikipedia.org/wiki/Levenshtein_distance).
+
 use std::cmp::min;
 use std::mem::swap;
 
+/// Compute the Levenshtein distance between two sequences.
+///
+/// # Examples:
+///
+/// - Compute a distance in characters between two strings:
+///
+/// ```rust
+/// # use generic_levenshtein::distance;
+/// # fn main() {
+/// assert_eq!(distance ("abc", "aaxcc"), 3);
+/// # }
+/// ```
+///
+/// - Compute a distance in words between two strings:
+///
+/// ```rust
+/// # use generic_levenshtein::distance;
+/// # fn main() {
+/// assert_eq!(
+///    distance (
+///       "The quick brown fox".split (' ').collect::<Vec<_>>(),
+///       "The very quick brown cat".split (' ').collect()),
+///    2);
+/// # }
+/// ```
+///
+/// - Compute a distance between two sequences of anything:
+///
+/// ```rust
+/// # use generic_levenshtein::distance;
+/// # fn main() {
+/// assert_eq!(distance (vec![1, 2, 3], vec![0, 1, 3, 3, 4]), 3);
+/// # }
+/// ```
 pub fn distance<T: PartialEq, U: AsRef<[T]>> (a: U, b: U) -> usize
 {
    let mut a = a.as_ref();
