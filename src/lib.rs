@@ -49,11 +49,11 @@ pub fn distance<T: PartialEq, U: AsRef<[T]>> (a: U, b: U) -> usize
 
    if a.len() == 0 { return b.len(); }
 
-   let mut cache: Vec<_> = (0 .. a.len()).collect();
+   let mut cache: Vec<_> = (1 ..= a.len()).collect();
 
    let mut result = 0;
    for (i, bi) in b.iter().enumerate() {
-      result = i;
+      result = i+1;
       let mut up = i;
       for (aj, c) in a.iter().zip (cache.iter_mut()) {
          let diag = if bi == aj { up } else { up+1 };
@@ -87,6 +87,19 @@ mod tests {
       assert_eq!(distance ("abcd", "abc"), 1);
       assert_eq!(distance ("aabc", "abc"), 1);
       assert_eq!(distance ("abbc", "abc"), 1);
+   }
+
+   #[test]
+   fn bug_insert_at_beginning_of_longest_sequence() {
+      // In order to change the longest sequence into the shortest, we
+      // must:
+      //
+      // - insert an item ("x" -> cost: 1),
+      // - copy some items ("abc" -> cost: 0),
+      // - remove the trailing items ("defg" -> cost 4).
+      //
+      // The first insertion was wrongly counted as zero-cost.
+      assert_eq!(distance ("abcdefg", "xabc"), 5);
    }
 
    #[test]
