@@ -4,7 +4,99 @@
 use std::cmp::min;
 use std::mem::swap;
 
-/// Compute the Levenshtein distance between two sequences.
+/// Holds custom weights for substitutions and insertion/deletion
+///
+/// # Examples
+///
+/// * One substitution is equivalent to an insertion and a deletion:
+///
+/// ```rust
+/// # use generic_levenshtein::Levenshtein;
+/// # fn main() {
+/// let lev = Levenshtein::new (1, 2);
+/// // Substitute 'x' for 'b' -> cost = 2
+/// assert_eq!(lev.distance ("abc", "axc"), 2);
+/// // Insert 'x' and delete 'c' -> cost = 1+1 = 2
+/// assert_eq!(lev.distance ("abc", "xab"), 2);
+/// # }
+/// ```
+///
+/// * Have  substitutions  cost  slightly  more  than  insertions  and
+///   deletions  (but  still  less  than a  deletion  followed  by  an
+///   insertion):
+///
+/// ```rust
+/// # use generic_levenshtein::Levenshtein;
+/// # fn main() {
+/// let lev = Levenshtein::new (2, 3);
+/// // Substitute 'x' for 'b' -> cost = 3
+/// assert_eq!(lev.distance ("abc", "axc"), 3);
+/// // Insert 'x' and delete 'c' -> cost = 2+2 = 4
+/// assert_eq!(lev.distance ("abc", "xab"), 4);
+/// # }
+/// ```
+pub struct Levenshtein {
+   addrm_weight: usize,
+   subst_weight: usize,
+}
+
+impl Levenshtein {
+   /// Create a `Levenshtein` instance holding custom weights.
+   ///
+   /// # Arguments
+   ///
+   /// * `addrm_weight` Weight to use for insertions and deletions.
+   /// * `subst_weight` Weight to use for substitutions.
+   pub fn new (addrm_weight: usize, subst_weight: usize)
+      -> Self
+   {
+      assert!(addrm_weight > 0);
+      assert!(subst_weight > 0);
+      Levenshtein { addrm_weight, subst_weight }
+   }
+
+   /// Compute  the Levenshtein  distance between two  sequences using
+   /// the stored custom weights.
+   pub fn distance<T: PartialEq, U: AsRef<[T]>> (&self, a: U, b: U)
+      -> usize
+   {
+      let mut a = a.as_ref();
+      let mut b = b.as_ref();
+
+      if a == b { return 0; }
+
+      if a.len() > b.len() { swap (&mut a, &mut b); }
+
+      if a.len() == 0 { return b.len(); }
+
+      let mut cache: Vec<_> = (1 ..= a.len()).map (|x| x * self.addrm_weight).collect();
+
+      let mut result = 0;
+      for (i, bi) in b.iter().enumerate() {
+         result = (i+1) * self.addrm_weight;
+         let mut up = i * self.addrm_weight;
+         for (aj, c) in a.iter().zip (cache.iter_mut()) {
+            let diag = if bi == aj { up } else { up + self.subst_weight };
+            up = *c;
+            result = min (min (result + self.addrm_weight,
+                               up + self.addrm_weight),
+                          diag);
+            *c = result;
+         }
+      }
+
+      return result;
+   }
+}
+
+impl Default for Levenshtein {
+   fn default() -> Self {
+      Levenshtein { addrm_weight: 1, subst_weight: 1 }
+   }
+}
+
+/// Compute  the  Levenshtein  distance between  two  sequences  using
+/// identical weights for insertions/deletions and for substitutions.
 ///
 /// # Examples:
 ///
@@ -40,32 +132,12 @@ use std::mem::swap;
 /// ```
 pub fn distance<T: PartialEq, U: AsRef<[T]>> (a: U, b: U) -> usize
 {
-   let mut a = a.as_ref();
-   let mut b = b.as_ref();
-
-   if a == b { return 0; }
-
-   if a.len() > b.len() { swap (&mut a, &mut b); }
-
-   if a.len() == 0 { return b.len(); }
-
-   let mut cache: Vec<_> = (1 ..= a.len()).collect();
-
-   let mut result = 0;
-   for (i, bi) in b.iter().enumerate() {
-      result = i+1;
-      let mut up = i;
-      for (aj, c) in a.iter().zip (cache.iter_mut()) {
-         let diag = if bi == aj { up } else { up+1 };
-         up = *c;
-         result = min (min (result + 1, up + 1), diag);
-         *c = result;
-      }
-   }
-
-   return result;
+   Levenshtein::default().distance (a, b)
 }
 
+/********************************************************************
+ * Tests
+ *******************************************************************/
 #[cfg (test)]
 mod tests {
    use super::distance;
