@@ -1,6 +1,6 @@
 [package]
 name = "generic_levenshtein"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Jerome M. Berger <jeberger@free.fr>"]
 license = "MIT"
 description = "Generic and fast implementation of the Levenshtein distance"
