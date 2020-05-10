@@ -1,10 +1,10 @@
 [package]
-name = "generic_levenshtein"
+name = "weighted_levenshtein"
 version = "0.2.0"
-authors = ["Jerome M. Berger <jeberger@free.fr>"]
+authors = ["Benjamin Levin <bplevin36@gmail.com>"]
 license = "MIT"
-description = "Generic and fast implementation of the Levenshtein distance"
-homepage = "https://bitbucket.org/jmb/rust_generic_levenshtein"
+description = "Generic, fast implementation of Levenshtein distance with features for weighting operations"
+homepage = "https://github.com/bplevin36/weighted_levenshtein"
 categories = [ "algorithms", "text-processing" ]
 readme = "README.md"
 edition = "2018"

@@ -11,7 +11,7 @@ use std::mem::swap;
 /// * One substitution is equivalent to an insertion and a deletion:
 ///
 /// ```rust
-/// # use generic_levenshtein::Levenshtein;
+/// # use weighted_levenshtein::Levenshtein;
 /// # fn main() {
 /// let lev = Levenshtein::new (1, 2);
 /// // Substitute 'x' for 'b' -> cost = 2
@@ -26,7 +26,7 @@ use std::mem::swap;
 ///   insertion):
 ///
 /// ```rust
-/// # use generic_levenshtein::Levenshtein;
+/// # use weighted_levenshtein::Levenshtein;
 /// # fn main() {
 /// let lev = Levenshtein::new (2, 3);
 /// // Substitute 'x' for 'b' -> cost = 3
@@ -103,7 +103,7 @@ impl Default for Levenshtein {
 /// - Compute a distance in characters between two strings:
 ///
 /// ```rust
-/// # use generic_levenshtein::distance;
+/// # use weighted_levenshtein::distance;
 /// # fn main() {
 /// assert_eq!(distance ("abc", "aaxcc"), 3);
 /// # }
@@ -112,7 +112,7 @@ impl Default for Levenshtein {
 /// - Compute a distance in words between two strings:
 ///
 /// ```rust
-/// # use generic_levenshtein::distance;
+/// # use weighted_levenshtein::distance;
 /// # fn main() {
 /// assert_eq!(
 ///    distance (
@@ -125,7 +125,7 @@ impl Default for Levenshtein {
 /// - Compute a distance between two sequences of anything:
 ///
 /// ```rust
-/// # use generic_levenshtein::distance;
+/// # use weighted_levenshtein::distance;
 /// # fn main() {
 /// assert_eq!(distance (vec![1, 2, 3], vec![0, 1, 3, 3, 4]), 3);
 /// # }

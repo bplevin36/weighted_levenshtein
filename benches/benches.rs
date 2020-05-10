@@ -9,22 +9,22 @@ const STRING2: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234
 const STRING3: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789&#'(-_@)=+";
 
 //==========================================================
-// generic_levenshtein
+// weighted_levenshtein
 #[bench]
 fn identical_strings (b:&mut Bencher) {
-   use generic_levenshtein::distance;
+   use weighted_levenshtein::distance;
    b.iter (|| { black_box (distance (STRING1, STRING1)); });
 }
 
 #[bench]
 fn same_length_strings (b:&mut Bencher) {
-   use generic_levenshtein::distance;
+   use weighted_levenshtein::distance;
    b.iter (|| { black_box (distance (STRING1, STRING2)); });
 }
 
 #[bench]
 fn different_length_strings (b:&mut Bencher) {
-   use generic_levenshtein::distance;
+   use weighted_levenshtein::distance;
    b.iter (|| { black_box (distance (STRING1, STRING3)); });
 }
 
