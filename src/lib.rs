@@ -1,10 +1,44 @@
-#![feature(specialization)]
 //! A   generic   and   fast  implementation   of   the   [Levenshtein
 //! distance](http://en.wikipedia.org/wiki/Levenshtein_distance).
+#![cfg_attr(feature = "default-weight", feature(specialization))]
 
-use std::cmp::{min, max};
+use std::cmp::min;
 use std::mem::swap;
 use std::iter::once;
+
+pub trait EditWeight {
+   fn addrm_cost(&self) -> usize;
+   fn sub_cost(&self, other: &Self) -> usize;
+}
+
+// default impl relying on specialization
+#[cfg(feature = "default-weight")]
+impl<T: PartialEq> EditWeight for T {
+   default fn addrm_cost(&self) -> usize { 1 }
+   default fn sub_cost(&self, other: &Self) -> usize {
+      if self == other {
+         0
+      } else {
+         std::cmp::max(self.addrm_cost(), other.addrm_cost())
+      }
+   }
+}
+
+// some specific impls otherwise
+#[cfg(not(feature = "default-weight"))]
+impl EditWeight for u8 {
+   fn addrm_cost(&self) -> usize { 1 }
+   fn sub_cost(&self, other: &Self) -> usize {
+      if self == other { 0 } else { 1 }
+   }
+}
+#[cfg(not(feature = "default-weight"))]
+impl EditWeight for &str {
+   fn addrm_cost(&self) -> usize { 1 }
+   fn sub_cost(&self, other: &Self) -> usize { 
+      if self == other { 0 } else { 1 }
+   }
+}
 
 /// Compute  the  Levenshtein  distance between  two  sequences  using
 /// identical weights for insertions/deletions and for substitutions.
@@ -76,26 +110,10 @@ pub fn distance<T: PartialEq + EditWeight, U: AsRef<[T]>, V: AsRef<[T]>> (a: U, 
    return *prev_row.last().unwrap();
 }
 
-pub trait EditWeight {
-   fn addrm_cost(&self) -> usize;
-   fn sub_cost(&self, other: &Self) -> usize;
-}
-
-impl<T: PartialEq> EditWeight for T {
-   default fn addrm_cost(&self) -> usize { 1 }
-   default fn sub_cost(&self, other: &Self) -> usize {
-      if self == other {
-         0
-      } else {
-         max(self.addrm_cost(), other.addrm_cost())
-      }
-   }
-}
-
 /********************************************************************
  * Tests
  *******************************************************************/
-#[cfg (test)]
+#[cfg(test)]
 mod tests {
    use super::{distance, EditWeight};
 
@@ -181,6 +199,14 @@ mod tests {
    enum Lett {
        A, B, C, D
    }
+   #[cfg(not(feature = "default-weight"))]
+   impl EditWeight for Lett {
+      fn addrm_cost(&self) -> usize { 1 }
+      fn sub_cost(&self, other: &Self) -> usize { 
+         if self == other { 0 } else { 1 }
+      }
+   }
+
    #[test]
    fn should_work_on_enum_slices() {
        assert_eq!(
@@ -201,6 +227,14 @@ mod tests {
             P::C => 2,
             P::E => 3,
             _ => 1,
+         }
+      }
+      #[cfg(not(feature = "default-weight"))]
+      fn sub_cost(&self, other: &Self) -> usize {
+         if self == other {
+            0
+         } else {
+            std::cmp::max(self.addrm_cost(), other.addrm_cost())
          }
       }
    }
