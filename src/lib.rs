@@ -1,17 +1,31 @@
-//! A   generic   and   fast  implementation   of   the   [Levenshtein
-//! distance](http://en.wikipedia.org/wiki/Levenshtein_distance).
+//! # weighted_levenshtein
+//!
+//! A generic implementation of [Levenshtein distance](http://en.wikipedia.org/wiki/Levenshtein_distance)
+//! that supports arbitrary weighting of edit operations.
+//! 
+//! # Optional Features
+//! 
+//! - `default-weight` (requires building w/ nightly Rust): Provides a default 
+//!   implementation of `EditWeight` for any `PartialEq` type.
+//!
 #![cfg_attr(feature = "default-weight", feature(specialization))]
 
 use std::cmp::min;
 use std::mem::swap;
 use std::iter::once;
 
+/// Trait for types that have custom costs for addition/removal and
+/// substitution.
 pub trait EditWeight {
+   /// Cost of adding or removing this item from a sequence
    fn addrm_cost(&self) -> usize;
+   /// Cost of substituting `other` for this item.
+   /// Implementors note: edit distance is only well-defined when 
+   /// `self.sub_cost(&self) == 0`
    fn sub_cost(&self, other: &Self) -> usize;
 }
 
-// default impl relying on specialization
+/// Default implementation for all `PartialEq` types. Requires `default-weight` feature.
 #[cfg(feature = "default-weight")]
 impl<T: PartialEq> EditWeight for T {
    default fn addrm_cost(&self) -> usize { 1 }
@@ -25,14 +39,12 @@ impl<T: PartialEq> EditWeight for T {
 }
 
 // some specific impls otherwise
-#[cfg(not(feature = "default-weight"))]
 impl EditWeight for u8 {
    fn addrm_cost(&self) -> usize { 1 }
    fn sub_cost(&self, other: &Self) -> usize {
       if self == other { 0 } else { 1 }
    }
 }
-#[cfg(not(feature = "default-weight"))]
 impl EditWeight for &str {
    fn addrm_cost(&self) -> usize { 1 }
    fn sub_cost(&self, other: &Self) -> usize { 
@@ -40,12 +52,11 @@ impl EditWeight for &str {
    }
 }
 
-/// Compute  the  Levenshtein  distance between  two  sequences  using
-/// identical weights for insertions/deletions and for substitutions.
+/// Compute the Levenshtein distance between two sequences.
 ///
 /// # Examples:
 ///
-/// - Compute a distance in characters between two strings:
+/// - Compute edit distance between strings, assuming ASCII or Latin-1.
 ///
 /// ```rust
 /// # use weighted_levenshtein::distance;
@@ -54,6 +65,20 @@ impl EditWeight for &str {
 /// # }
 /// ```
 ///
+/// - Compute edit distance between strings, respecting Unicode.
+///
+/// ```rust
+/// # use weighted_levenshtein::distance;
+/// use unicode_segmentation::UnicodeSegmentation;
+/// # fn main() {
+/// assert_eq!(
+///      distance(
+///         "🇬🇧 🇧🇬".graphemes(true).collect::<Vec<&str>>(),
+///         "🇬🇧 🏴󠁧󠁢󠁳󠁣󠁴󠁿".graphemes(true).collect::<Vec<&str>>()),
+///      1);
+/// # }
+///
+/// ```
 /// - Compute a distance in words between two strings:
 ///
 /// ```rust
@@ -67,15 +92,17 @@ impl EditWeight for &str {
 /// # }
 /// ```
 ///
-/// - Compute a distance between two sequences of anything:
+/// - Compute a distance between two sequences of a user type:
 ///
 /// ```rust
-/// # use weighted_levenshtein::distance;
+/// # use weighted_levenshtein::{distance, EditWeight};
+///
 /// # fn main() {
 /// assert_eq!(distance (vec![1, 2, 3], vec![0, 1, 3, 3, 4]), 3);
 /// # }
 /// ```
-pub fn distance<T: PartialEq + EditWeight, U: AsRef<[T]>, V: AsRef<[T]>> (a: U, b: V) -> usize
+pub fn distance<T, U: AsRef<[T]>, V: AsRef<[T]>> (a: U, b: V) -> usize
+   where T: PartialEq + EditWeight
 {
    let mut a = a.as_ref();
    let mut b = b.as_ref();
@@ -116,6 +143,8 @@ pub fn distance<T: PartialEq + EditWeight, U: AsRef<[T]>, V: AsRef<[T]>> (a: U, 
 #[cfg(test)]
 mod tests {
    use super::{distance, EditWeight};
+   use unicode_segmentation::UnicodeSegmentation;
+   use std::cmp::{max, min};
 
    #[test]
    fn identical_strings_should_have_zero_distance() {
@@ -162,6 +191,16 @@ mod tests {
       assert_eq!(distance (vec![0, 1, 2], vec![0, 0, 1, 2]), 1);
       assert_eq!(distance (vec![0, 1, 2], vec![1, 2]), 1);
       assert_eq!(distance (vec![0, 1, 2], vec![3, 1, 2]), 1);
+   }
+
+   #[test]
+   fn test_grapheme_distance() {
+      assert_eq!(
+         distance(
+            "🇬🇧🇧🇬".graphemes(true).collect::<Vec<&str>>(),
+            "🇬🇧🏴󠁧󠁢󠁳󠁣󠁴󠁿".graphemes(true).collect::<Vec<&str>>(),
+         ),
+      1);
    }
 
    #[test]
@@ -215,6 +254,36 @@ mod tests {
            ),
            2);
    }
+
+   #[derive(PartialEq)]
+   enum Money {
+      Nickel,
+      Quarter,
+      Dollar
+   }
+
+   impl EditWeight for Money {
+      fn addrm_cost(&self) -> usize {
+         match self {
+            Money::Nickel => 5,
+            Money::Quarter => 25,
+            Money::Dollar => 100,
+         }
+      }
+      fn sub_cost(&self, other: &Self) -> usize {
+         max(self.addrm_cost(), other.addrm_cost()) - min(self.addrm_cost(), other.addrm_cost())
+      }
+   }
+
+   #[test]
+   fn test_money() {
+      assert_eq!(
+         distance(
+            &[Money::Dollar, Money::Nickel, Money::Dollar],
+            &[Money::Dollar, Money::Nickel, Money::Quarter]),
+         75);
+   }
+
 
    #[derive(PartialEq, Debug)]
    enum P {

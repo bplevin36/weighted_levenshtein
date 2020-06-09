@@ -11,3 +11,6 @@ edition = "2018"
 
 [features]
 default-weight = []
+
+[dev-dependencies]
+unicode-segmentation = "1.3.0"
