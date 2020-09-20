@@ -2,25 +2,26 @@
 //!
 //! A generic implementation of [Levenshtein distance](http://en.wikipedia.org/wiki/Levenshtein_distance)
 //! that supports arbitrary weighting of edit operations.
-//! 
+//!
 //! # Optional Features
-//! 
-//! - `default-weight` (requires building w/ nightly Rust): Provides a default 
+//!
+//! - `default-weight` (requires `feature(specialization)`, so nightly Rust): Provides a default
 //!   implementation of `EditWeight` for any `PartialEq` type.
 //!
 #![cfg_attr(feature = "default-weight", feature(specialization))]
 
 use std::cmp::min;
 use std::mem::swap;
-use std::iter::once;
 
 /// Trait for types that have custom costs for addition/removal and
 /// substitution.
 pub trait EditWeight {
-   /// Cost of adding or removing this item from a sequence
-   fn addrm_cost(&self) -> usize;
+   /// Cost of adding this item to a sequence
+   fn add_cost(&self) -> usize;
+   /// Cost of removing this item from a sequence
+   fn rm_cost(&self) -> usize;
    /// Cost of substituting `other` for this item.
-   /// Implementors note: edit distance is only well-defined when 
+   /// Implementors note: edit distance is only well-defined when
    /// `self.sub_cost(&self) == 0`
    fn sub_cost(&self, other: &Self) -> usize;
 }
@@ -28,26 +29,29 @@ pub trait EditWeight {
 /// Default implementation for all `PartialEq` types. Requires `default-weight` feature.
 #[cfg(feature = "default-weight")]
 impl<T: PartialEq> EditWeight for T {
-   default fn addrm_cost(&self) -> usize { 1 }
+   default fn add_cost(&self) -> usize { 1 }
+   default fn rm_cost(&self) -> usize { 1 }
    default fn sub_cost(&self, other: &Self) -> usize {
       if self == other {
          0
       } else {
-         std::cmp::max(self.addrm_cost(), other.addrm_cost())
+         self.rm_cost() + other.add_cost()
       }
    }
 }
 
 // some specific impls otherwise
 impl EditWeight for u8 {
-   fn addrm_cost(&self) -> usize { 1 }
+   fn add_cost(&self) -> usize { 1 }
+   fn rm_cost(&self) -> usize { 1 }
    fn sub_cost(&self, other: &Self) -> usize {
       if self == other { 0 } else { 1 }
    }
 }
 impl EditWeight for &str {
-   fn addrm_cost(&self) -> usize { 1 }
-   fn sub_cost(&self, other: &Self) -> usize { 
+   fn add_cost(&self) -> usize { 1 }
+   fn rm_cost(&self) -> usize { 1 }
+   fn sub_cost(&self, other: &Self) -> usize {
       if self == other { 0 } else { 1 }
    }
 }
@@ -108,33 +112,40 @@ pub fn distance<T, U: AsRef<[T]>, V: AsRef<[T]>> (a: U, b: V) -> usize
    let mut b = b.as_ref();
 
    if a == b { return 0; }
-
    if a.len() > b.len() { swap (&mut a, &mut b); }
 
-   if a.len() == 0 { return b.len(); }
-
-   // init prev_row
-   let mut prev_row: Vec<usize> =
-      b.iter().chain(once(&b[0])).scan(0usize, |cum, i| {
-         let old_cum = *cum;
-         *cum += i.addrm_cost();
-         Some(old_cum)
-      }).collect();
-   let mut curr_row: Vec<usize> = vec![0; prev_row.len()];
-   // loop through rows in matrix
-   for (i, a_elem) in a.iter().enumerate() {
-      // edit distance from current a to empty b
-      curr_row[0] = a.iter().take(i+1).map(|x| x.addrm_cost()).sum();
-
-      for (j, b_elem) in b.iter().enumerate() {
-         let deletion_cost = prev_row[j + 1] + b_elem.addrm_cost();
-         let insertion_cost = curr_row[j] + b_elem.addrm_cost();
-         let sub_cost = prev_row[j] + a_elem.sub_cost(&b_elem);
-         curr_row[j + 1] = min(deletion_cost, min(insertion_cost, sub_cost));
-      }
-      swap(&mut curr_row, &mut prev_row);
+   // initialize matrix
+   let mut mat: Vec<Vec<usize>> = Vec::with_capacity(a.len() + 1);
+   for _ in 0..=a.len() {
+       let mut row = Vec::with_capacity(b.len() + 1);
+       for _ in 0..=b.len() {
+           row.push(0);
+       }
+       mat.push(row);
    }
-   return *prev_row.last().unwrap();
+   // set first row (`a` prefixes vs empty string)
+   for i in 0..a.len() {
+       mat[i + 1][0] = mat[i][0] + a[i].rm_cost();
+   }
+   // set first column (`b` prefixes vs empty string)
+   for i in 0..b.len() {
+       mat[0][i + 1] = mat[0][i] + b[i].add_cost();
+   }
+   // fill in matrix
+   for j in 0..b.len() {
+       for i in 0..a.len() {
+           let sub_cost = a[i].sub_cost(&b[j]);
+
+           mat[i + 1][j + 1] = min(min(
+               mat[i][j + 1] + a[i].rm_cost(),
+               mat[i + 1][j] + b[j].add_cost()),
+               mat[i][j] + sub_cost
+           );
+       }
+   }
+   // return bottom right corner
+   *mat.last().unwrap().last().unwrap()
+
 }
 
 /********************************************************************
@@ -240,8 +251,9 @@ mod tests {
    }
    #[cfg(not(feature = "default-weight"))]
    impl EditWeight for Lett {
-      fn addrm_cost(&self) -> usize { 1 }
-      fn sub_cost(&self, other: &Self) -> usize { 
+      fn add_cost(&self) -> usize { 1 }
+      fn rm_cost(&self) -> usize { 1 }
+      fn sub_cost(&self, other: &Self) -> usize {
          if self == other { 0 } else { 1 }
       }
    }
@@ -263,15 +275,16 @@ mod tests {
    }
 
    impl EditWeight for Money {
-      fn addrm_cost(&self) -> usize {
+      fn add_cost(&self) -> usize {
          match self {
             Money::Nickel => 5,
             Money::Quarter => 25,
             Money::Dollar => 100,
          }
       }
+      fn rm_cost(&self) -> usize { self.add_cost() }
       fn sub_cost(&self, other: &Self) -> usize {
-         max(self.addrm_cost(), other.addrm_cost()) - min(self.addrm_cost(), other.addrm_cost())
+         max(self.add_cost(), other.add_cost()) - min(self.add_cost(), other.add_cost())
       }
    }
 
@@ -291,19 +304,20 @@ mod tests {
    }
 
    impl EditWeight for P {
-      fn addrm_cost(&self) -> usize {
+      fn add_cost(&self) -> usize {
          match self {
             P::C => 2,
             P::E => 3,
             _ => 1,
          }
       }
+      fn rm_cost(&self) -> usize { self.add_cost() }
       #[cfg(not(feature = "default-weight"))]
       fn sub_cost(&self, other: &Self) -> usize {
          if self == other {
             0
          } else {
-            std::cmp::max(self.addrm_cost(), other.addrm_cost())
+            std::cmp::max(self.add_cost(), other.add_cost())
          }
       }
    }
