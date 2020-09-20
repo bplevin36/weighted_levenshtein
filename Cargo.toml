@@ -1,6 +1,6 @@
 [package]
 name = "weighted_levenshtein"
-version = "0.2.0"
+version = "0.1.0"
 authors = ["Benjamin Levin <bplevin36@gmail.com>"]
 license = "MIT"
 description = "Generic implementation of Levenshtein distance allowing arbitrary weighting of operations"
