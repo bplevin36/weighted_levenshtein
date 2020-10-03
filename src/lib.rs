@@ -28,8 +28,6 @@ pub trait EditWeight {
 
 /// Default implementation for all `PartialEq` types. Requires `default-weight` feature.
 #[cfg(feature = "default-weight")]
-use std::cmp::max;
-#[cfg(feature = "default-weight")]
 impl<T: PartialEq> EditWeight for T {
     default fn add_cost(&self) -> usize {
         1
@@ -41,7 +39,7 @@ impl<T: PartialEq> EditWeight for T {
         if self == other {
             0
         } else {
-            max(self.rm_cost(), other.add_cost())
+            std::cmp::max(self.rm_cost(), other.add_cost())
         }
     }
 }

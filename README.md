@@ -37,3 +37,36 @@ assert_eq!(distance(vec![1, 2, 3], vec![0, 1, 3, 3, 4]), 3);
 This crate allows defining custom weights for each operation on each symbol.
 These weights can be specified for custom types by implementing the [`EditWeight`](https://docs.rs/weighted_levenshtein/0.2.0/weighted_levenshtein/trait.EditWeight.html)
 trait.
+
+For example:
+
+```rust
+enum MyType {
+  A,
+  B,
+}
+
+impl EditWeight for MyType {
+  fn add_cost(&self) -> usize {
+    match *self {
+      MyType::A => 1,
+      MyType::B => 2,
+    }
+  }
+  fn rm_cost(&self) -> usize {
+    match *self {
+      MyType::A => 1,
+      MyType::B => 2,
+    }
+  }
+  fn sub_cost(&self, other: &Self) -> usize {
+    if self == other {
+      0
+    } else {
+      3
+    }
+  }
+}
+
+assert_eq!(distance(vec![MyType::A], vec![MyType::B, MyType::B]), 5)
+```
